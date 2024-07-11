@@ -1,0 +1,109 @@
+@font-face{
+  font-family: 'Neuelis';
+  src: url('https://cdn.shopify.com/s/files/1/0673/8532/7855/files/65c4f4afbfc1d89087cb8de4_NeulisNeue-Bold.otf?v=1719856432') format('opentype')
+}
+
+.vflexbody {
+  font-family: 'Neuelis', sans-serif;
+  background-color: #FFFFFF;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+h1 {
+  color: #000B14;
+  text-align: center;
+  font-size: 50px;
+  margin-bottom: 20px;
+}
+
+button, select, input[type="text"] {
+  margin: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight:600;
+  border: 2px solid #9696A8;
+  background-color: #F6F6F9;
+  color: #9696A8;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+button:hover, select:hover, input[type="text"]:hover {
+  background-color: #000B14;
+  color: #fff;
+  border-color: #000B14;
+}
+
+#status {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+#sender_lines, #receiver_lines {
+  display: none;
+  margin: 10px;
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  max-width: 400px;
+  overflow-y: auto;
+  max-height: 200px;
+}
+
+.line {
+  margin-bottom: 5px;
+}
+
+#command_line {
+  width: calc(100% - 42px); /* Adjust for padding and border */
+  max-width: 400px;
+  display: none;
+}
+
+#voltage_select {
+  width: 100%;
+  max-width: 200px;
+}
+
+#program_button {
+  background-color: #9696A8; /* Blue */
+  color: white;
+  border: none;
+  width: 200px;
+}
+
+#program_button:hover {
+  background-color: #000B14;
+}
+
+#status {
+    font-size: 15px;
+    font-family: "Roboto", sans-serif;
+    font-weight: 300;
+}
+
+#controls {
+  text-align: center;
+  display: none;
+}
+
+#connect {
+  background-color: #04D3BC; /* Green */
+  color: white;
+  border: none;
+  width: 200px;
+  padding: 10px;
+  margin: 5px;
+  cursor: pointer;
+  text-align: center;
+}
+
+#connect:hover {
+  background-color: #e0e0e0;
+}

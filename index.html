@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vFlex Programmer</title>
+  <script src="application.js"></script>
+  <script src="serial.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+</head>
+<div class="vflexbody">
+  <div>
+    <h1>vFlex Programmer</h1>
+  </div>
+  <button id="connect">CONNECT</button>
+  
+  
+  <input type="text" id="command_line" placeholder="Enter command">
+  
+  <div id="controls">
+    <select id="voltage_select" style="text-align: center;">
+      <option value="5">5V</option>
+      <option value="9">9V</option>
+      <option value="12">12V</option>
+      <option value="15">15V</option>
+      <option value="20">20V</option>
+    </select>
+    <button id="program_button">Program</button>
+  </div>
+    
+  <div id="status"></div>
+  <div id="sender_lines"></div>
+  <div id="receiver_lines"></div>
+  
+
+</div>
+</html>
