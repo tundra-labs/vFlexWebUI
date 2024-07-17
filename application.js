@@ -9,14 +9,102 @@
     const programButton = document.querySelector("#program_button");
     const commandLine = document.querySelector("#command_line");
     let actualVoltage = null;
-
     let port;
+
+    // Color ENUM
+    const color = Object.freeze ({
+      RED: 0,
+      GREEN: 1, 
+      BLUE: 2,
+      OFF: 3
+    });
+
+    // Command ENUM
+    const cmdCode = Object.freeze ({
+      SETV: 0,
+      GETUUID: 1,
+      LED: 2,
+      GETV: 3
+    });
+
+    // ConfirmationBlink Array
+    let confBlink = [
+      { color: color.OFF, timeMS: 100 },
+      { color: color.GREEN, timeMS: 100 },
+      { color: color.OFF, timeMS: 100 },
+      { color: color.GREEN, timeMS: 100 }
+    ];
+    
+    // errorBlink Array
+    let errorBlink = [
+      { color: color.OFF, timeMS: 100 },
+      { color: color.RED, timeMS: 400 },
+      { color: color.OFF, timeMS: 100 },
+      { color: color.RED, timeMS: 400 }
+    ];
+
+    // Helper function to convert milliseconds to MSB and LSB
+    function msToBytes(ms) {
+      const MSB = (ms >> 8) & 0xFF; // Most Significant Byte
+      const LSB = ms & 0xFF; // Least Significant Byte
+      console.log(ms, MSB, LSB, MSB.toString(16), LSB.toString(16), ms.toString(16));
+      return [MSB, LSB];
+    }
+
+    // LED Blink Helper Function
+    function ledBlink (n_cycles, ledArr) {
+
+      let flashArrayLength = (4 + (ledArr.length * 3));
+
+      var led_flash_message_array = new Uint8Array(flashArrayLength); //setting array length
+      led_flash_message_array.set([flashArrayLength, cmdCode.LED, n_cycles, ledArr.length], 0);
+
+
+      let i = 4;
+
+      for(let k = 0; k < ledArr.length; k++, i++){
+        led_flash_message_array[i] = ledArr[k].color; // send color code
+        i++;
+        let byteTime = msToBytes(ledArr[k].timeMS); //Convert MSB and LSB to byteTime array
+        led_flash_message_array[i] = byteTime[0]; //MSB
+        i++;
+        led_flash_message_array[i] = byteTime[1]; //LSB
+      }
+    
+      console.log(led_flash_message_array);
+      port.send(led_flash_message_array);
+
+    }
+
+    // Send Back Voltage Setting
+    function getVoltage () {
+      var get_voltage_setting_message_array = new Uint8Array(2);
+      get_voltage_setting_message_array[0] = 2; // usb message len
+      get_voltage_setting_message_array[1] = cmdCode.GETV; // cmd code
+      console.log(get_voltage_setting_message_array);
+      port.send(get_voltage_setting_message_array);
+      return actualVoltage;
+    }
+
+    function setVoltage (selectedVoltage) {
+      var array = new Uint8Array(3);
+      array[0] = 3; // msg len
+      array[1] = cmdCode.SETV; // command code set voltage
+      array[2] = selectedVoltage;
+      console.log(array);
+
+      port.send(array);
+    }
 
     function connect() {
       port.connect().then(() => {
         statusDisplay.textContent = '';
         connectButton.textContent = 'Disconnect';
-        statusDisplay.textContent = port.device_.productName + ' Connected';
+        getVoltage();
+        setTimeout(() => {
+          statusDisplay.textContent = port.device_.productName + ' Connected: Programmed to ' + actualVoltage +'V';        
+        }, 10);
+        console.log(actualVoltage);
         console.log(port.device_);
     
         // Show the voltage select and program button
@@ -24,7 +112,7 @@
     
         port.onReceive = data => {
           let textDecoder = new TextDecoder();
-          let command_code = data.getUint8(1);
+          let command_code = data.getUint8(1); 
           switch (command_code) {
             case 0:
               break;
@@ -77,19 +165,12 @@
 
     programButton.addEventListener('click', function() {
       const selectedVoltage = parseInt(voltageSelect.value);
-      //console.log(selectedVoltage);
+      
+      //setting new Voltage
+      setVoltage(selectedVoltage);
 
-      var setVoltageArray = new Uint8Array(3);
-      setVoltageArray[0] = 3; // msg len
-      setVoltageArray[1] = 0; // command code set voltage
-      setVoltageArray[2] = selectedVoltage;
-      port.send(setVoltageArray);
-
-      var getVoltageSettingArray = new Uint8Array(2);
-      getVoltageSettingArray[0] = 2; // usb message len
-      getVoltageSettingArray[1] = 3; // cmd code to read voltage
-      console.log("Getting Updated Voltage...");
-      port.send(getVoltageSettingArray); 
+      //getting programmed voltage
+      getVoltage();
 
       // Wait for a short time before checking the voltage
       setTimeout(() => {
@@ -97,39 +178,17 @@
 
         if (actualVoltage === selectedVoltage) {
           console.log('Voltages match:', actualVoltage, selectedVoltage);
-          // Add your LED flash message or other logic here
-          function msToBytes(ms) {
-            const MSB = (ms >> 8) & 0xFF; // Most Significant Byte
-            const LSB = ms & 0xFF; // Least Significant Byte
-            return [MSB, LSB];
-          }
-  
-          // Define your timings in milliseconds
-          const onTime = 100; // 100 ms
-          const offTime = 100; // 100 ms
-  
-          // Convert timings to bytes
-          const onTimeBytes = msToBytes(onTime);
-          const offTimeBytes = msToBytes(offTime);
-  
-          // Prepare the LED flash message
-          var led_flash_message_array = new Uint8Array(10);
-          led_flash_message_array[0] = 10; // usb message len
-          led_flash_message_array[1] = 2; // cmd code
-          led_flash_message_array[2] = 5; // n cycles: repeat led flash sequence
-          led_flash_message_array[3] = 2; // seq len. on / off sequence = 2
-          led_flash_message_array[4] = 3; // seq sel 0 enum: RED=0, GREEN, BLUE, OFF
-          led_flash_message_array[5] = onTimeBytes[0]; // seq time 0 MSB
-          led_flash_message_array[6] = onTimeBytes[1]; // seq time 0 LSB
-          led_flash_message_array[7] = 1; // seq sel 1 = OFF
-          led_flash_message_array[8] = offTimeBytes[0];
-          led_flash_message_array[9] = offTimeBytes[1];
-          console.log(led_flash_message_array);
-          port.send(led_flash_message_array);
+          
+          //send confirmation blink
+          ledBlink(2, confBlink);
 
-          statusDisplay.textContent = 'Device Output Updated to ' + selectedVoltage;
+          statusDisplay.textContent = 'Device Output Updated to ' + selectedVoltage + 'V';
+
         } else {
           console.log('Voltages do not match:', actualVoltage, selectedVoltage);
+
+          //send error blink
+          ledBlink(3, errorBlink);
         }
 
         
