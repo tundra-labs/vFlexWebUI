@@ -8,6 +8,7 @@
     const voltageSelect = document.querySelector("#voltage_select");
     const programButton = document.querySelector("#program_button");
     const commandLine = document.querySelector("#command_line");
+    const stressTest = document.querySelector("#stress_test");
     let actualVoltage = null;
     let port;
 
@@ -27,40 +28,45 @@
       GETV: 3
     });
 
+    const usbMsgLen = Object.freeze ({
+      SETV: 3,
+      GETUUID: 2,
+      LED: 4,
+      GETV: 2
+    })
+
     // ConfirmationBlink Array
     let confBlink = [
-      { color: color.OFF, timeMS: 100 },
-      { color: color.GREEN, timeMS: 100 },
-      { color: color.OFF, timeMS: 100 },
-      { color: color.GREEN, timeMS: 100 }
+      { color: color.OFF, timeMS: 25 },
+      { color: color.GREEN, timeMS: 25 },
+      { color: color.OFF, timeMS: 25 },
+      { color: color.GREEN, timeMS: 25 }
     ];
     
     // errorBlink Array
     let errorBlink = [
-      { color: color.OFF, timeMS: 100 },
-      { color: color.RED, timeMS: 400 },
-      { color: color.OFF, timeMS: 100 },
-      { color: color.RED, timeMS: 400 }
+      { color: color.OFF, timeMS: 25 },
+      { color: color.RED, timeMS: 25 },
+      { color: color.OFF, timeMS: 25 },
+      { color: color.RED, timeMS: 25 }
     ];
 
     // Helper function to convert milliseconds to MSB and LSB
     function msToBytes(ms) {
       const MSB = (ms >> 8) & 0xFF; // Most Significant Byte
       const LSB = ms & 0xFF; // Least Significant Byte
-      console.log(ms, MSB, LSB, MSB.toString(16), LSB.toString(16), ms.toString(16));
       return [MSB, LSB];
     }
 
     // LED Blink Helper Function
     function ledBlink (n_cycles, ledArr) {
 
-      let flashArrayLength = (4 + (ledArr.length * 3));
+      let flashArrayLength = (usbMsgLen.LED + (ledArr.length * 3)); //Calculating array length
 
       var led_flash_message_array = new Uint8Array(flashArrayLength); //setting array length
-      led_flash_message_array.set([flashArrayLength, cmdCode.LED, n_cycles, ledArr.length], 0);
+      led_flash_message_array.set([flashArrayLength, cmdCode.LED, n_cycles, ledArr.length], 0); //adding initial array values
 
-
-      let i = 4;
+      let i = usbMsgLen.LED;
 
       for(let k = 0; k < ledArr.length; k++, i++){
         led_flash_message_array[i] = ledArr[k].color; // send color code
@@ -70,39 +76,34 @@
         i++;
         led_flash_message_array[i] = byteTime[1]; //LSB
       }
-    
-      console.log(led_flash_message_array);
-      port.send(led_flash_message_array);
 
+      port.send(led_flash_message_array);
     }
 
     // Send Back Voltage Setting
     function getVoltage () {
-      var get_voltage_setting_message_array = new Uint8Array(2);
-      get_voltage_setting_message_array[0] = 2; // usb message len
-      get_voltage_setting_message_array[1] = cmdCode.GETV; // cmd code
+      var get_voltage_setting_message_array = new Uint8Array(usbMsgLen.GETV);
+      get_voltage_setting_message_array.set([usbMsgLen.GETV, cmdCode.GETV], 0);
       console.log(get_voltage_setting_message_array);
       port.send(get_voltage_setting_message_array);
       return actualVoltage;
     }
 
+    //Set Voltage Function
     function setVoltage (selectedVoltage) {
-      var array = new Uint8Array(3);
-      array[0] = 3; // msg len
-      array[1] = cmdCode.SETV; // command code set voltage
-      array[2] = selectedVoltage;
-      console.log(array);
-
+      var array = new Uint8Array(usbMsgLen.SETV);
+      array.set([usbMsgLen.SETV, cmdCode.SETV, selectedVoltage], 0);
       port.send(array);
     }
 
+    
     function connect() {
       port.connect().then(() => {
         statusDisplay.textContent = '';
         connectButton.textContent = 'Disconnect';
         getVoltage();
         setTimeout(() => {
-          statusDisplay.textContent = port.device_.productName + ' Connected: Programmed to ' + actualVoltage +'V';        
+          statusDisplay.innerText = port.device_.productName + ' Connected:\nCurrently at ' + actualVoltage +'V';        
         }, 10);
         console.log(actualVoltage);
         console.log(port.device_);
@@ -189,11 +190,95 @@
 
           //send error blink
           ledBlink(3, errorBlink);
-        }
-
-        
-      }, 500); // Adjust the delay as necessary
+        }        
+      }, 100); // Adjust the delay as necessary
     });
+
+    document.getElementById('stress_test').addEventListener('click', async function() {
+      let voltageSet = [5, 9, 12, 15, 20];
+      let confCount = 0;
+      let errorCount = 0;
+  
+      function delay(ms) {
+          return new Promise(resolve => setTimeout(resolve, ms));
+      }
+  
+      while (errorCount < 10) {
+          for (let k = 0; k < voltageSet.length; k++) {
+              // Setting new Voltage
+              setVoltage(voltageSet[k]);
+              console.log('Set voltage to:', voltageSet[k]);
+  
+              // Delay to allow for the voltage to be set
+              await delay(50);
+  
+              // Getting programmed voltage
+              await getVoltage();
+              await delay(50);
+  
+              // Ensure actualVoltage is correctly set
+              console.log('Actual voltage read:', actualVoltage);
+  
+              if (actualVoltage === voltageSet[k]) {
+                  console.log('Voltages match:', actualVoltage, voltageSet[k]);
+  
+                  // Send confirmation blink
+                  ledBlink(1, confBlink);
+                  confCount++;
+                  console.log('Confirmation count:', confCount);
+                  console.log('Error Count:', errorCount);
+              } else {
+                  console.log('Voltages do not match:', actualVoltage, voltageSet[k]);
+  
+                  // Send error blink
+                  ledBlink(1, errorBlink);
+                  errorCount++;
+                  console.log('Error count:', errorCount);
+              }
+  
+              // Delay before the next iteration
+              await delay(100);
+          }
+
+        // Retrieve existing results from localStorage or initialize empty array
+        let existingResults = JSON.parse(localStorage.getItem('stressTestResults')) || [];
+
+        // Add current results to existing results
+        existingResults.push({ confCount, errorCount });
+
+        console.log(existingResults);
+
+        // Save updated results to localStorage
+        localStorage.setItem('stressTestResults', JSON.stringify(existingResults));
+      }
+  
+      
+    });
+  
+    document.getElementById('download_results').addEventListener('click', function() {
+      // Retrieve results from localStorage
+      const resultsString = localStorage.getItem('stressTestResults');
+      console.log('Retrieved results string:', resultsString);
+
+      if (resultsString) {
+          // Create a Blob from the results string
+          const blob = new Blob([resultsString], { type: 'text/plain' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = 'stress_test_results.txt';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+      } else {
+          alert('No results to download.');
+      }
+    });
+  
+  
+  
      
 
     commandLine.addEventListener("keypress", function(event) {
